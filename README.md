@@ -47,7 +47,6 @@ The scope is trimmed to fit time/budget while still covering all rubric requirem
 ## ⚡ Quick Start
 
 ### 1. Clone the repo
-`sh
+```sh
 git clone https://github.com/JerikoSebVDM/mern-microservices-lean-rebuilt.git
 cd mern-microservices-lean-rebuilt
-
