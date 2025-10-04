@@ -1,0 +1,80 @@
+version: "3.9"
+services:
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+
+  auth:
+    build: ./services/auth
+    environment:
+      PORT: ${AUTH_PORT}
+      MONGO_URL: ${MONGO_URL}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on: [mongo]
+    ports: ["3001:${AUTH_PORT}"]
+
+  catalog:
+    build: ./services/catalog
+    environment:
+      PORT: ${CATALOG_PORT}
+      MONGO_URL: ${MONGO_URL}
+    depends_on: [mongo]
+    ports: ["3002:${CATALOG_PORT}"]
+
+  cart:
+    build: ./services/cart
+    environment:
+      PORT: ${CART_PORT}
+      MONGO_URL: ${MONGO_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
+    depends_on: [mongo, order]
+    ports: ["3003:${CART_PORT}"]
+
+  order:
+    build: ./services/order
+    environment:
+      PORT: ${ORDER_PORT}
+      MONGO_URL: ${MONGO_URL}
+    depends_on: [mongo]
+    ports: ["3004:${ORDER_PORT}"]
+
+  gateway:
+    build: ./services/gateway
+    environment:
+      PORT: ${GATEWAY_PORT}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL}
+      CART_SERVICE_URL: ${CART_SERVICE_URL}
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
+    ports: ["8080:${GATEWAY_PORT}"]
+    depends_on: [auth, catalog, cart, order]
+
+  client:
+    build: ./client
+    environment:
+      VITE_API_BASE: ${VITE_API_BASE}
+    ports: ["5173:5173"]
+    depends_on: [gateway]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [auth, catalog, cart, order, gateway]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports: ["3000:3000"]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on: [prometheus]
+
+volumes:
+  mongo-data: {}

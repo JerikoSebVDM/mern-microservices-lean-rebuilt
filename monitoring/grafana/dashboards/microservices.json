@@ -1,0 +1,51 @@
+{
+  "title": "Microservices (Lean)",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "HTTP req/sec (auth)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"auth\"}[1m])"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "HTTP req/sec (catalog)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"catalog\"}[1m])"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "HTTP req/sec (cart)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"cart\"}[1m])"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "HTTP req/sec (order)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"order\"}[1m])"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "HTTP req/sec (gateway)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"gateway\"}[1m])"
+        }
+      ]
+    }
+  ]
+}
