@@ -1,52 +1,66 @@
-﻿# MERN Microservices (Lean Class Demo)
+﻿# 🧩 MERN Microservices (Lean Class Demo)
 
-This project is a lean microservices e-commerce demo designed for coursework.
-It shows clear **service boundaries**, **REST APIs**, **Docker/Kubernetes orchestration**, and **monitoring**.
-The scope is trimmed to fit time/budget while still covering all rubric requirements.
+This project is a lean microservices e-commerce demo designed for coursework.  
+It demonstrates clear service boundaries, REST APIs, Docker orchestration, and real-time monitoring with Prometheus and Grafana.  
+Each milestone adds one key production-grade feature while staying lightweight and modular.
 
 ---
 
 ## 🎯 Milestones & Deliverables
 
 ### ✅ Milestone 1: Core Services (20%)
-- **Auth Service**: signup/login with JWT
-- **Catalog Service**: seeded products
-- **Cart Service**: per-user cart (secured with JWT)
-- **Dockerised MongoDB**: single DB with per-service collections
+- **Auth Service** → signup/login with JWT  
+- **Catalog Service** → seeded products  
+- **Cart Service** → per-user cart (secured with JWT)  
+- **Dockerised MongoDB** with per-service collections  
 - All services containerized with Docker
 
+---
+
 ### ✅ Milestone 2: Gateway + Frontend (20%)
-- **API Gateway**: reverse proxy for routing requests to services
-- **React/Vite Client**: login → catalog → add to cart → checkout flow
-- **Webhook**: checkout posts order event to Order service
-- All runnable via docker compose up
-
-### 🔜 Milestone 3: Orders + Monitoring (30%)
-- **Order Service**: receives webhooks, persists orders
-- **Prometheus** metrics exposed from each service
-- **Grafana** dashboards for monitoring
-
-### 🔜 Milestone 4: Async + K8s (30%)
-- Kafka/RabbitMQ integration for async flows (shipping/payment demo)
-- Kubernetes manifests for deployment
+- **API Gateway** for routing and request proxying  
+- **React/Vite Client** → login → catalog → add to cart → checkout flow  
+- **Webhook** → checkout posts order event to Order service  
+- Entire system runnable via `docker compose up`
 
 ---
 
-## 📂 Services Overview
+### ✅ Milestone 3: Healthchecks + Monitoring (30%)
+- `/health` endpoints added to all services for uptime verification  
+- Configured Docker **healthchecks** and `restart: always` policies  
+- Integrated **Prometheus** for metrics collection  
+- Integrated **Grafana** for visualization dashboards  
+- Prometheus scrapes all services (`auth`, `catalog`, `cart`, `order`, `gateway`)  
+- Grafana visualizes real-time service health and request rates  
+- Default Grafana credentials → **admin / admin**
 
-- **gateway** → reverse proxy to internal services (/metrics exposed)
-- **auth** → signup/login with JWT (/metrics exposed)
-- **catalog** → seeded products (/metrics exposed)
-- **cart** → per-user cart, /checkout posts webhook to order service (/metrics exposed)
-- **order** → stores orders received via webhook (/metrics exposed)
-- **client** → minimal React/Vite UI for login → catalog → cart → checkout
-- **monitoring** → Prometheus + Grafana configs (to be enabled in Milestone 3)
+#### 📊 Monitoring URLs
+- Prometheus → [http://localhost:9090](http://localhost:9090)  
+- Grafana → [http://localhost:3000](http://localhost:3000)
 
----
+#### ✅ Verification Commands
+```bash
+curl http://localhost:3001/health   # auth
+curl http://localhost:3002/health   # catalog
+curl http://localhost:3003/health   # cart
+curl http://localhost:3004/health   # order
+curl http://localhost:8080/health   # gateway
+🔜 Milestone 4: Async + Kubernetes (30%)
+Add Kafka/RabbitMQ for asynchronous messaging (shipping/payment demo)
 
-## ⚡ Quick Start
+Add Kubernetes manifests for scalable deployment
 
-### 1. Clone the repo
-```sh
-git clone https://github.com/JerikoSebVDM/mern-microservices-lean-rebuilt.git
-cd mern-microservices-lean-rebuilt
+Integrate services with message queue–based order processing
+
+Configure Prometheus + Grafana to monitor async pipelines and pods
+
+📂 Services Overview
+Service	Port	Description
+gateway	8080	Reverse proxy for routing requests
+auth	3001	JWT signup/login authentication
+catalog	3002	Seeded product catalog
+cart	3003	Per-user cart + checkout webhooks
+order	3004	Order storage & webhook handler
+client	5173	React/Vite UI frontend
+prometheus	9090	Metrics collection
+grafana	3000	Dashboard visualization
