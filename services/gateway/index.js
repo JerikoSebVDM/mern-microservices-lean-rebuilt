@@ -46,6 +46,6 @@ app.use('/order', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: { '^/order': '' }
 }));
-
+app.get('/health', (req, res) => res.send('OK'));
 // start gateway
 app.listen(PORT, () => console.log(`gateway on ${PORT}`));

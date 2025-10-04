@@ -54,5 +54,5 @@ app.get('/me', (req, res) => {
     res.status(401).json({ error: 'unauthorized' });
   }
 });
-
+app.get('/health', (req, res) => res.send('OK'));
 app.listen(PORT, () => console.log('auth on', PORT));

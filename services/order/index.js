@@ -81,5 +81,5 @@ app.put('/orders/:id/status', async (req, res) => {
   if (status === 'completed') orderCompleted.inc(); // metrics
   res.json({ message: 'Order status updated' });
 });
-
+app.get('/health', (req, res) => res.send('OK'));
 app.listen(PORT, () => console.log(`✅ order on ${PORT}`));

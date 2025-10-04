@@ -34,5 +34,5 @@ app.get('/products', async (req, res) => {
   const list = await products.find().toArray();
   res.json(list);
 });
-
+app.get('/health', (req, res) => res.send('OK'));
 app.listen(PORT, () => console.log('catalog on', PORT));

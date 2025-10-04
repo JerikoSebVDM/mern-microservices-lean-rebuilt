@@ -88,5 +88,5 @@ app.post('/checkout', auth, async (req, res) => {
     res.status(502).json({ error: 'order service unavailable' });
   }
 });
-
+app.get('/health', (req, res) => res.send('OK'));
 app.listen(PORT, () => console.log('cart on', PORT));
