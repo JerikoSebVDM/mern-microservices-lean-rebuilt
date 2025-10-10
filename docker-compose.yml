@@ -1,112 +1,217 @@
+version: "3.9"
+
 services:
   mongo:
     image: mongo:7
-    ports: ["27017:27017"]
-    volumes: ["mongo-data:/data/db"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: mern-microservices-lean-rebuilt-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 👇 Prometheus exporter for RabbitMQ
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    container_name: mern-microservices-lean-rebuilt-rabbitmq-exporter
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+    ports:
+      - "9419:9419"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     restart: always
 
   auth:
     build: ./services/auth
     environment:
-      PORT: ${AUTH_PORT}
+      PORT: 3001
       MONGO_URL: ${MONGO_URL}
       JWT_SECRET: ${JWT_SECRET}
-    depends_on: [mongo]
-    ports: ["3001:${AUTH_PORT}"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   catalog:
     build: ./services/catalog
     environment:
-      PORT: ${CATALOG_PORT}
+      PORT: 3002
       MONGO_URL: ${MONGO_URL}
-    depends_on: [mongo]
-    ports: ["3002:${CATALOG_PORT}"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-  cart:
-    build: ./services/cart
-    environment:
-      PORT: ${CART_PORT}
-      MONGO_URL: ${MONGO_URL}
-      JWT_SECRET: ${JWT_SECRET}
-      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
-    depends_on: [mongo, order]
-    ports: ["3003:${CART_PORT}"]
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   order:
     build: ./services/order
     environment:
-      PORT: ${ORDER_PORT}
+      PORT: 3004
       MONGO_URL: ${MONGO_URL}
-    depends_on: [mongo]
-    ports: ["3004:${ORDER_PORT}"]
+      RABBIT_URL: amqp://rabbitmq:5672
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3004:3004"
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      test: ["CMD-SHELL", "curl -f http://localhost:3004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  cart:
+    build: ./services/cart
+    environment:
+      PORT: 3003
+      MONGO_URL: ${MONGO_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ORDER_SERVICE_URL: http://order:3004
+      AMQP_URL: amqp://rabbitmq:5672
+    depends_on:
+      mongo:
+        condition: service_healthy
+      order:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3003:3003"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   gateway:
     build: ./services/gateway
     environment:
-      PORT: ${GATEWAY_PORT}
-      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
-      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL}
-      CART_SERVICE_URL: ${CART_SERVICE_URL}
-      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
-    ports: ["8080:${GATEWAY_PORT}"]
-    depends_on: [auth, catalog, cart, order]
+      PORT: 8080
+      AUTH_SERVICE_URL: http://auth:3001
+      CATALOG_SERVICE_URL: http://catalog:3002
+      CART_SERVICE_URL: http://cart:3003
+      ORDER_SERVICE_URL: http://order:3004
+      SHIPPING_SERVICE_URL: http://shipping:3005
+    depends_on:
+      auth:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      cart:
+        condition: service_healthy
+      order:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  shipping:
+    build: ./services/shipping
+    container_name: mern-microservices-lean-rebuilt-shipping
+    environment:
+      - SHIPPING_PORT=3005
+      - RABBIT_URL=amqp://rabbitmq:5672
+      - MONGO_URL=mongodb://mongo:27017/mern
+    ports:
+      - "3005:3005"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   client:
     build: ./client
     environment:
-      VITE_API_BASE: ${VITE_API_BASE}
-    ports: ["5173:5173"]
-    depends_on: [gateway]
+      VITE_API_BASE: http://gateway:8080
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
     restart: always
 
   prometheus:
     image: prom/prometheus:v2.55.1
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
-    depends_on: [auth, catalog, cart, order, gateway]
+    ports:
+      - "9090:9090"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      rabbitmq-exporter:
+        condition: service_started
     restart: always
 
   grafana:
     image: grafana/grafana:11.2.0
-    ports: ["3000:3000"]
+    ports:
+      - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-    depends_on: [prometheus]
+    depends_on:
+      prometheus:
+        condition: service_started
     restart: always
 
 volumes:

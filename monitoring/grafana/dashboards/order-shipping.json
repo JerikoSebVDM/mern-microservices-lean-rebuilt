@@ -1,0 +1,95 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "row",
+      "title": "📦 Service Health Overview",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "type": "stat",
+      "title": "Gateway CPU Usage (seconds)",
+      "targets": [
+        { "expr": "process_cpu_seconds_total{job='gateway'}", "legendFormat": "gateway" }
+      ],
+      "gridPos": { "x": 0, "y": 1, "w": 8, "h": 6 }
+    },
+    {
+      "type": "stat",
+      "title": "Order Service CPU Usage (seconds)",
+      "targets": [
+        { "expr": "process_cpu_seconds_total{job='order-service'}", "legendFormat": "order" }
+      ],
+      "gridPos": { "x": 8, "y": 1, "w": 8, "h": 6 }
+    },
+    {
+      "type": "stat",
+      "title": "Shipping Service CPU Usage (seconds)",
+      "targets": [
+        { "expr": "process_cpu_seconds_total{job='shipping-service'}", "legendFormat": "shipping" }
+      ],
+      "gridPos": { "x": 16, "y": 1, "w": 8, "h": 6 }
+    },
+    {
+      "type": "row",
+      "title": "🧠 Memory & Event Loop",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Resident Memory (bytes)",
+      "targets": [
+        { "expr": "process_resident_memory_bytes", "legendFormat": "{{job}}" }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Event Loop Lag (seconds)",
+      "targets": [
+        { "expr": "nodejs_eventloop_lag_seconds", "legendFormat": "{{job}}" }
+      ],
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+    },
+    {
+      "type": "row",
+      "title": "📈 Business Metrics",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders Created (per 5s)",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job='order-service',path='/orders',method='POST'}[5m])",
+          "legendFormat": "Orders Created"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 17, "w": 12, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders Shipped (RabbitMQ Consumes)",
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job='shipping-service'}[5m])",
+          "legendFormat": "Shipping Activity (proxy metric)"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 17, "w": 12, "h": 8 }
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["microservices", "monitoring"],
+  "templating": { "list": [] },
+  "title": "MERN Microservices — Order & Shipping Dashboard",
+  "version": 1,
+  "uid": "order-shipping-dashboard"
+}

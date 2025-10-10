@@ -2,7 +2,7 @@
   "name": "auth-service",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
@@ -14,6 +14,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.8.0",
+    "mongoose": "^8.19.1",
     "prom-client": "^15.1.3"
   }
 }

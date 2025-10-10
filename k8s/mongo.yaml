@@ -1,6 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: mongo, namespace: shop }
+metadata: { name: mongo, namespace: mern-ecommerce }
 spec:
   replicas: 1
   selector: { matchLabels: { app: mongo } }
@@ -21,7 +21,7 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: mongo, namespace: shop }
+metadata: { name: mongo, namespace: mern-ecommerce }
 spec:
   selector: { app: mongo }
   ports: [{ port: 27017, targetPort: 27017 }]

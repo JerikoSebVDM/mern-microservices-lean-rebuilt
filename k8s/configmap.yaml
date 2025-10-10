@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: global-config
+  namespace: mern-ecommerce
+data:
+  MONGO_URL: "mongodb://mongo:27017/mern"
+  RABBIT_URL: "amqp://rabbitmq:5672"
+  AMQP_URL: "amqp://rabbitmq:5672"
+  JWT_SECRET: "changeme-in-prod"
+  AUTH_SERVICE_URL: "http://auth:3001"
+  CATALOG_SERVICE_URL: "http://catalog:3002"
+  CART_SERVICE_URL: "http://cart:3003"
+  ORDER_SERVICE_URL: "http://order:3004"
+  VITE_API_BASE: "http://gateway:8080"

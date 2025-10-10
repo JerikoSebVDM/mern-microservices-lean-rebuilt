@@ -1,38 +1,44 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { MongoClient } = require('mongodb');
-const { metricsMiddleware, metricsEndpoint } = require('./metrics');
+// services/catalog/index.js
+import dotenv from "dotenv";
+import express from "express";
+import mongoose from "mongoose";
+import { metricsMiddleware, metricsEndpoint } from "./metrics.js";
 
-const PORT = process.env.PORT || 3002;
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/appdb';
+dotenv.config();
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3002;
+const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017/mern";
+
 app.use(express.json());
-app.use(metricsMiddleware('catalog'));
+app.use(metricsMiddleware("catalog"));
 
-let db, products;
-MongoClient.connect(MONGO_URL).then(async client => {
-  db = client.db();
-  products = db.collection('products');
-  const count = await products.countDocuments();
-  if (count === 0) {
-    await products.insertMany([
-      { sku: 'SKU-1', name: 'Demo Product 1', price: 19.99 },
-      { sku: 'SKU-2', name: 'Demo Product 2', price: 29.99 },
-      { sku: 'SKU-3', name: 'Demo Product 3', price: 39.99 }
-    ]);
-    console.log('catalog seeded');
-  }
-  console.log('catalog connected to mongo');
-}).catch(console.error);
+// ✅ Health + metrics
+app.get("/health", (_, res) => res.status(200).send("OK"));
+app.get("/metrics", metricsEndpoint);
 
-app.get('/metrics', metricsEndpoint());
-
-app.get('/products', async (req, res) => {
-  const list = await products.find().toArray();
-  res.json(list);
+// 🧾 Sample product list
+app.get("/products", async (_, res) => {
+  const products = [
+    { sku: "desk01", name: "Demo Product 1", price: 19.99 },
+    { sku: "chair01", name: "Demo Product 2", price: 49.99 },
+    { sku: "lamp01", name: "Demo Product 3", price: 29.99 },
+  ];
+  res.json(products);
 });
-app.get('/health', (req, res) => res.send('OK'));
-app.listen(PORT, () => console.log('catalog on', PORT));
+
+// 🚀 Start server
+async function start() {
+  try {
+    await mongoose.connect(MONGO_URL);
+    console.log("✅ Connected to MongoDB (catalog service)");
+    app.listen(PORT, "0.0.0.0", () =>
+      console.log(`🚀 Catalog service running on port ${PORT}`)
+    );
+  } catch (err) {
+    console.error("❌ Catalog service failed to start:", err.message);
+    process.exit(1);
+  }
+}
+
+start();

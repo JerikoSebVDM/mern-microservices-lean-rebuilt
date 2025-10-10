@@ -1,58 +1,85 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { MongoClient } = require('mongodb');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { metricsMiddleware, metricsEndpoint } = require('./metrics');
+// services/auth/index.js
+import dotenv from "dotenv";
+import express from "express";
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { metricsMiddleware, metricsEndpoint } from "./metrics.js";
 
-const PORT = process.env.PORT || 3001;
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/appdb';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_change_me';
+dotenv.config();
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3001;
+const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017/mern";
+const JWT_SECRET = process.env.JWT_SECRET || "changeme";
+
 app.use(express.json());
-app.use(metricsMiddleware('auth'));
+app.use(metricsMiddleware("auth"));
 
-let db, users;
-MongoClient.connect(MONGO_URL).then(client => {
-  db = client.db();
-  users = db.collection('users');
-  console.log('auth connected to mongo');
-}).catch(console.error);
+// ✅ Health + metrics
+app.get("/health", (_, res) => res.status(200).send("OK"));
+app.get("/metrics", metricsEndpoint);
 
-app.get('/metrics', metricsEndpoint());
-
-app.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'missing fields' });
-  const existing = await users.findOne({ email });
-  if (existing) return res.status(409).json({ error: 'exists' });
-  const hash = await bcrypt.hash(password, 10);
-  await users.insertOne({ email, password: hash, createdAt: new Date() });
-  res.json({ ok: true });
+// 🧩 User model
+const userSchema = new mongoose.Schema({
+  email: { type: String, unique: true },
+  password: String,
 });
+const User = mongoose.model("User", userSchema);
 
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await users.findOne({ email });
-  if (!user) return res.status(401).json({ error: 'invalid' });
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).json({ error: 'invalid' });
-  const token = jwt.sign({ uid: user._id.toString(), email }, JWT_SECRET, { expiresIn: '2h' });
-  res.json({ token });
-});
-
-app.get('/me', (req, res) => {
-  const auth = req.headers.authorization || '';
-  const token = auth.replace('Bearer ', '');
+// ✅ Signup
+app.post("/signup", async (req, res) => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    res.json({ user: { id: payload.uid, email: payload.email } });
-  } catch (e) {
-    res.status(401).json({ error: 'unauthorized' });
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password required" });
+
+    const existing = await User.findOne({ email });
+    if (existing)
+      return res.status(409).json({ error: "User already exists" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ email, password: hashed });
+
+    res.status(201).json({ message: `User ${user.email} registered successfully` });
+  } catch (err) {
+    console.error("Signup error:", err.message);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
-app.get('/health', (req, res) => res.send('OK'));
-app.listen(PORT, () => console.log('auth on', PORT));
+
+// ✅ Login
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.json({ token });
+  } catch (err) {
+    console.error("Login error:", err.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ✅ Start server
+async function start() {
+  try {
+    await mongoose.connect(MONGO_URL);
+    console.log("✅ Connected to MongoDB (auth service)");
+    app.listen(PORT, () =>
+      console.log(`🚀 Auth service running on port ${PORT}`)
+    );
+  } catch (err) {
+    console.error("❌ Auth service failed to start:", err.message);
+    process.exit(1);
+  }
+}
+
+start();

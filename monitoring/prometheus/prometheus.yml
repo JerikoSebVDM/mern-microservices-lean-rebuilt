@@ -1,13 +1,38 @@
 global:
   scrape_interval: 5s
+
 scrape_configs:
-  - job_name: 'auth'
-    static_configs: [{ targets: ['auth:3001'] }]
-  - job_name: 'catalog'
-    static_configs: [{ targets: ['catalog:3002'] }]
-  - job_name: 'cart'
-    static_configs: [{ targets: ['cart:3003'] }]
-  - job_name: 'order'
-    static_configs: [{ targets: ['order:3004'] }]
-  - job_name: 'gateway'
-    static_configs: [{ targets: ['gateway:8080'] }]
+  - job_name: "auth"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["auth:3001"]
+
+  - job_name: "catalog"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["catalog:3002"]
+
+  - job_name: "cart"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["cart:3003"]
+
+  - job_name: "order"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["order:3004"]
+
+  - job_name: "shipping"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["shipping:3005"]
+
+  - job_name: "gateway"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:8080"]
+
+  - job_name: "rabbitmq"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rabbitmq-exporter:9419"]

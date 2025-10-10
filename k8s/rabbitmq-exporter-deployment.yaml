@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-exporter
+  namespace: mern-ecommerce
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-exporter
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-exporter
+    spec:
+      containers:
+        - name: rabbitmq-exporter
+          image: kbudde/rabbitmq-exporter:latest
+          env:
+            - name: RABBIT_URL
+              value: "http://rabbitmq:15672"
+            - name: RABBIT_USER
+              value: "user"
+            - name: RABBIT_PASSWORD
+              value: "pass"
+          ports:
+            - containerPort: 9419
+              name: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-exporter
+  namespace: mern-ecommerce
+spec:
+  selector:
+    app: rabbitmq-exporter
+  ports:
+    - port: 9419
+      targetPort: 9419
+      name: metrics

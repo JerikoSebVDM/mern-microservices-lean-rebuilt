@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: mern-ecommerce
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+      evaluation_interval: 5s
+
+    scrape_configs:
+      # 🔹 Gateway (API Gateway)
+      - job_name: "gateway"
+        metrics_path: /metrics
+        scheme: http
+        scrape_interval: 5s
+        scrape_timeout: 4s
+        honor_timestamps: true
+        enable_http2: false
+        enable_compression: false
+        scrape_protocols:
+          - PrometheusText0.0.4
+        static_configs:
+          - targets:
+              - "gateway.mern-ecommerce.svc.cluster.local:8080"
+
+      # 🔹 Order Service
+      - job_name: "order-service"
+        metrics_path: /metrics
+        scheme: http
+        scrape_interval: 5s
+        scrape_timeout: 4s
+        honor_timestamps: true
+        enable_http2: false
+        enable_compression: false
+        scrape_protocols:
+          - PrometheusText0.0.4
+        static_configs:
+          - targets:
+              - "order.mern-ecommerce.svc.cluster.local:3004"
+
+      # 🔹 Shipping Service
+      - job_name: "shipping-service"
+        metrics_path: /metrics
+        scheme: http
+        scrape_interval: 5s
+        scrape_timeout: 4s
+        honor_timestamps: true
+        enable_http2: false
+        enable_compression: false
+        scrape_protocols:
+          - PrometheusText0.0.4
+        static_configs:
+          - targets:
+              - "shipping.mern-ecommerce.svc.cluster.local:3005"
+
+      # 🔹 RabbitMQ Exporter
+      - job_name: "rabbitmq"
+        metrics_path: /metrics
+        scheme: http
+        scrape_interval: 5s
+        scrape_timeout: 4s
+        honor_timestamps: true
+        enable_http2: false
+        enable_compression: false
+        scrape_protocols:
+          - PrometheusText0.0.4
+        static_configs:
+          - targets:
+              - "rabbitmq-exporter.mern-ecommerce.svc.cluster.local:9419"
