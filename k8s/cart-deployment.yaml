@@ -22,6 +22,11 @@ spec:
           envFrom:
             - configMapRef:
                 name: global-config
+          env:
+            - name: AMQP_URL
+              value: "amqp://guest:guest@rabbitmq:5672"
+            - name: RABBIT_URL
+              value: "amqp://guest:guest@rabbitmq:5672"
           readinessProbe:
             httpGet:
               path: /health
@@ -38,6 +43,6 @@ spec:
   selector:
     app: cart
   ports:
-    - port: 3003
+    - name: http
+      port: 3003
       targetPort: 3003
-      name: http

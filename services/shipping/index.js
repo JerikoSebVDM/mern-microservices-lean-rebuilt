@@ -11,7 +11,8 @@ const app = express();
 // ⚙️ Environment
 const PORT = process.env.SHIPPING_PORT || 3005;
 const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017/mern";
-const AMQP_URL = process.env.RABBIT_URL || "amqp://rabbitmq:5672";
+// ✅ Fixed to prioritize AMQP_URL (set in Kubernetes)
+const AMQP_URL = process.env.AMQP_URL || process.env.RABBIT_URL || "amqp://user:pass@rabbitmq:5672";
 
 // 📊 Prometheus setup
 const register = new client.Registry();
