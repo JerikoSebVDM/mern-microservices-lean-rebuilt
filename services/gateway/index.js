@@ -1,24 +1,29 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { createProxyMiddleware, fixRequestBody } = require("http-proxy-middleware");
+const {
+  createProxyMiddleware,
+  fixRequestBody,
+} = require("http-proxy-middleware");
 const { metricsMiddleware, metricsEndpoint } = require("./metrics");
 
 const PORT = process.env.PORT || 8080;
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://auth:3001";
-const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || "http://catalog:3002";
+const CATALOG_SERVICE_URL =
+  process.env.CATALOG_SERVICE_URL || "http://catalog:3002";
 const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://cart:3003";
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://order:3004";
-const SHIPPING_SERVICE_URL = process.env.SHIPPING_SERVICE_URL || "http://shipping:3005";
+const SHIPPING_SERVICE_URL =
+  process.env.SHIPPING_SERVICE_URL || "http://shipping:3005";
 
 const app = express();
 app.use(cors());
 
-// 🧩 Register metrics middleware first, to catch *all* requests
+// 🧩 Register metrics middleware first
 app.use(metricsMiddleware("gateway"));
 
-// ✅ Define /metrics and /health BEFORE any proxies
+// ✅ Health & metrics routes
 app.get("/metrics", metricsEndpoint);
 app.get("/health", (_, res) => res.send("OK"));
 
@@ -36,7 +41,18 @@ app.use(
   })
 );
 
-// 🛍️ Catalog
+// 🖼️ Catalog static uploads (must come BEFORE /catalog proxy)
+app.use(
+  "/catalog/uploads",
+  createProxyMiddleware({
+    target: CATALOG_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: { "^/catalog": "" }, // removes /catalog from path
+    logLevel: "warn",
+  })
+);
+
+// 🛍️ Catalog API
 app.use(
   "/catalog",
   createProxyMiddleware({
@@ -80,6 +96,7 @@ app.use(
   })
 );
 
+// 🚀 Start gateway
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Gateway running on port ${PORT}`);
   console.log(`🔗 Auth proxy → ${AUTH_SERVICE_URL}`);

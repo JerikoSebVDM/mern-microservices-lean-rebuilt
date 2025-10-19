@@ -5,8 +5,15 @@
         "containers": [
           {
             "name": "gateway",
-            "image": "mern-microservices-lean-rebuilt-gateway:v21",
-            "imagePullPolicy": "Never"
+            "image": "mern-microservices-lean-rebuilt-gateway:v22",
+            "imagePullPolicy": "Never",
+            "env": [
+              { "name": "AUTH_SERVICE_URL", "value": "http://auth:3001" },
+              { "name": "CATALOG_SERVICE_URL", "value": "http://catalog:3002" },
+              { "name": "CART_SERVICE_URL", "value": "http://cart:3003" },
+              { "name": "ORDER_SERVICE_URL", "value": "http://order:3004" },
+              { "name": "SHIPPING_SERVICE_URL", "value": "http://shipping:3005" }
+            ]
           }
         ]
       }

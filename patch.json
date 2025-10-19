@@ -1,0 +1,15 @@
+﻿{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "catalog",
+            "image": "mern-microservices-lean-rebuilt-catalog:latest",
+            "imagePullPolicy": "Never"
+          }
+        ]
+      }
+    }
+  }
+}

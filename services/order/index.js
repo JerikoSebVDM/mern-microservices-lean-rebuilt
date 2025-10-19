@@ -11,7 +11,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3004;
 const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017/mern";
-const AMQP_URL = process.env.RABBIT_URL || "amqp://rabbitmq:5672";
+const RABBIT_USER = process.env.RABBIT_USER || "mernuser";
+const RABBIT_PASS = process.env.RABBIT_PASS || "mernpass";
+const AMQP_URL =
+  process.env.RABBITMQ_URL ||
+  process.env.RABBIT_URL ||
+  `amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672`;
 
 // --- Mongo setup ---
 mongoose.connect(MONGO_URL);
@@ -58,14 +63,18 @@ register.registerMetric(orderProcessingDuration);
 // --- Routes ---
 app.get("/health", (_, res) => res.send("OK"));
 
-// Create order
+// Create order manually (direct API call)
 app.post("/create", async (req, res) => {
   const start = Date.now();
   try {
     const { items } = req.body;
-    if (!items?.length) return res.status(400).json({ error: "Invalid order items" });
+    if (!items?.length)
+      return res.status(400).json({ error: "Invalid order items" });
 
-    const total = items.reduce((sum, i) => sum + (i.price || 0) * (i.qty || 1), 0);
+    const total = items.reduce(
+      (sum, i) => sum + (i.price || 0) * (i.qty || 1),
+      0
+    );
 
     const order = await Order.create({
       items,
@@ -74,14 +83,31 @@ app.post("/create", async (req, res) => {
       createdAt: new Date(),
     });
 
+    // --- Publish order to RabbitMQ ---
+    try {
+      const conn = await amqplib.connect(AMQP_URL);
+      const ch = await conn.createChannel();
+      await ch.assertQueue("orders", { durable: true });
+      ch.sendToQueue("orders", Buffer.from(JSON.stringify(order)), {
+        persistent: true,
+      });
+      console.log("📨 Order published to RabbitMQ:", order._id);
+      await ch.close();
+      await conn.close();
+    } catch (err) {
+      console.error("❌ Failed to publish order to RabbitMQ:", err.message);
+    }
+
+    // Metrics update
     ordersTotal.inc();
-    const revenue = await Order.aggregate([{ $group: { _id: null, sum: { $sum: "$total" } } }])
-      .then((r) => (r[0] ? r[0].sum : 0));
+    const revenue = await Order.aggregate([
+      { $group: { _id: null, sum: { $sum: "$total" } } },
+    ]).then((r) => (r[0] ? r[0].sum : 0));
     totalRevenue.set(revenue);
     lastOrderTimestamp.set(Date.now() / 1000);
     orderProcessingDuration.observe((Date.now() - start) / 1000);
 
-    console.log("🧾 New order:", order);
+    console.log("🧾 New order created:", order);
     res.json({ ok: true, order });
   } catch (err) {
     console.error("❌ Order create failed:", err);
@@ -97,53 +123,65 @@ app.get("/metrics", async (req, res) => {
   res.end(await register.metrics());
 });
 
-// RabbitMQ consumer
-async function consumeOrders() {
-  try {
-    const conn = await amqplib.connect(AMQP_URL);
-    const ch = await conn.createChannel();
-    await ch.assertQueue("orders");
+// --- RabbitMQ consumer with retry logic ---
+async function consumeOrders(retries = 10, delay = 5000) {
+  while (retries) {
+    try {
+      const conn = await amqplib.connect(AMQP_URL);
+      const ch = await conn.createChannel();
+      await ch.assertQueue("orders");
 
-    ch.consume("orders", async (msg) => {
-      const orderData = JSON.parse(msg.content.toString());
-      console.log("📦 Received order from queue:", orderData);
+      console.log("✅ Connected to RabbitMQ");
+      console.log("🐇 RabbitMQ consumer active (orders queue)");
 
-      const start = Date.now();
-      try {
-        const total = orderData.items.reduce(
-          (sum, i) => sum + (i.price || 0) * (i.qty || 1),
-          0
-        );
+      ch.consume("orders", async (msg) => {
+        const orderData = JSON.parse(msg.content.toString());
+        console.log("📦 Received order from queue:", orderData);
 
-        const order = await Order.create({
-          items: orderData.items,
-          total,
-          status: orderData.status || "created",
-          createdAt: new Date(orderData.createdAt || Date.now()),
-        });
+        const start = Date.now();
+        try {
+          const total = orderData.items.reduce(
+            (sum, i) => sum + (i.price || 0) * (i.qty || 1),
+            0
+          );
 
-        ordersTotal.inc();
-        const revenue = await Order.aggregate([{ $group: { _id: null, sum: { $sum: "$total" } } }])
-          .then((r) => (r[0] ? r[0].sum : 0));
-        totalRevenue.set(revenue);
-        lastOrderTimestamp.set(Date.now() / 1000);
-        orderProcessingDuration.observe((Date.now() - start) / 1000);
+          const order = await Order.create({
+            items: orderData.items,
+            total,
+            status: orderData.status || "created",
+            createdAt: new Date(orderData.createdAt || Date.now()),
+          });
 
-        ch.ack(msg);
-      } catch (err) {
-        console.error("❌ Failed to process message:", err.message);
-        ordersFailed.inc();
-        orderProcessingDuration.observe((Date.now() - start) / 1000);
-        ch.ack(msg);
-      }
-    });
+          ordersTotal.inc();
+          const revenue = await Order.aggregate([
+            { $group: { _id: null, sum: { $sum: "$total" } } },
+          ]).then((r) => (r[0] ? r[0].sum : 0));
+          totalRevenue.set(revenue);
+          lastOrderTimestamp.set(Date.now() / 1000);
+          orderProcessingDuration.observe((Date.now() - start) / 1000);
 
-    console.log("🐇 RabbitMQ consumer active (orders queue)");
-  } catch (err) {
-    console.error("❌ RabbitMQ consumer failed:", err.message);
+          ch.ack(msg);
+        } catch (err) {
+          console.error("❌ Failed to process message:", err.message);
+          ordersFailed.inc();
+          orderProcessingDuration.observe((Date.now() - start) / 1000);
+          ch.ack(msg);
+        }
+      });
+
+      break; // exit retry loop if successful
+    } catch (err) {
+      console.error(`❌ RabbitMQ consumer failed (${11 - retries}/10):`, err.message);
+      retries -= 1;
+      if (!retries) throw err;
+      await new Promise((res) => setTimeout(res, delay));
+    }
   }
 }
 
+// --- Startup ---
 consumeOrders();
 
-app.listen(PORT, () => console.log(`🚀 Order service running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Order service running on port ${PORT}`)
+);

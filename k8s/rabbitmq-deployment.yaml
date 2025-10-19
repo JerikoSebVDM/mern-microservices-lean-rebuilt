@@ -23,9 +23,9 @@ spec:
               name: http
           env:
             - name: RABBITMQ_DEFAULT_USER
-              value: "user"
+              value: "myuser"
             - name: RABBITMQ_DEFAULT_PASS
-              value: "pass"
+              value: "mypassword"
           readinessProbe:
             httpGet:
               path: /
