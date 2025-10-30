@@ -41,24 +41,23 @@ app.use(
   })
 );
 
-// 🖼️ Catalog static uploads (must come BEFORE /catalog proxy)
-app.use(
-  "/catalog/uploads",
-  createProxyMiddleware({
-    target: CATALOG_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: { "^/catalog": "" }, // removes /catalog from path
-    logLevel: "warn",
-  })
-);
-
-// 🛍️ Catalog API
+// 🛍️ Catalog API (must come before /uploads)
 app.use(
   "/catalog",
   createProxyMiddleware({
     target: CATALOG_SERVICE_URL,
     changeOrigin: true,
     pathRewrite: { "^/catalog": "" },
+    logLevel: "warn",
+  })
+);
+
+// 🖼️ Static product images (/uploads only)
+app.use(
+  "/uploads",
+  createProxyMiddleware({
+    target: CATALOG_SERVICE_URL,
+    changeOrigin: true,
     logLevel: "warn",
   })
 );
